@@ -5,6 +5,7 @@ from collector.auth import LinkedInAuth
 from collector.search import LinkedInSearch
 from collector.scroller import LinkedInScroller
 from collector.collector import LinkedInCollector
+from collector.parser import LinkedInParser
 
 def main():
     keywords = load_keywords()
@@ -20,6 +21,8 @@ def main():
 
         collector = LinkedInCollector()
 
+        parser = LinkedInParser()
+
         for keyword in keywords:
 
             page = context.new_page()
@@ -32,7 +35,11 @@ def main():
 
             posts = collector.get_post_candidates(page)
 
-            print(f"Found {posts.count()} potential posts")
+            first_post = posts.nth(0)
+
+            post = parser.parse(first_post)
+
+            print(post)
 
             input("Check search results and then press Enter...")
 

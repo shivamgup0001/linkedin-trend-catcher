@@ -5,7 +5,7 @@ class LinkedInScroller:
     Responsible only for loading more content by scrolling
     """
 
-    def scroll(self, page: Page, max_scrolls: int =10):
+    def scroll(self, page: Page, max_scrolls: int =1):
         previous_height = 0
 
         for i in range(max_scrolls):
