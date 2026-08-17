@@ -8,9 +8,13 @@ from collector.collector import LinkedInCollector
 from collector.parser import LinkedInParser
 from collector.interceptor import NetworkInterceptor
 
+from database.mongo import MongoDB
+
 
 def main():
     keywords = load_keywords()
+
+    db = MongoDB()
 
     with sync_playwright() as playwright:
         auth = LinkedInAuth(playwright)
@@ -45,7 +49,11 @@ def main():
 
             print(f"Found {posts.count()} posts")
 
-            print(parser.parse(posts.nth(0)))
+            post = parser.parse(posts.nth(0))
+
+            db.save_post(post)
+            print(post)
+            print("Saved to MongoDB")
 
             input("Press Enter to continue...")
 
