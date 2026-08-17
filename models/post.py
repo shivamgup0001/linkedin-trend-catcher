@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Optional
 from datetime import datetime
+from dataclasses import field
 
 @dataclass
 class Post:

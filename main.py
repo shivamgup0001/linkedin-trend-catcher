@@ -6,6 +6,8 @@ from collector.search import LinkedInSearch
 from collector.scroller import LinkedInScroller
 from collector.collector import LinkedInCollector
 from collector.parser import LinkedInParser
+from collector.interceptor import NetworkInterceptor
+
 
 def main():
     keywords = load_keywords()
@@ -27,21 +29,25 @@ def main():
 
             page = context.new_page()
 
+            interceptor = NetworkInterceptor()
+            page.on("response", interceptor.handle_response)
+
             print(f"Searching: {keyword}")
 
             searcher.search(page, keyword)
 
             scroller.scroll(page)
 
+            # Let any remaining network requests finish
+            page.wait_for_timeout(3000)
+
             posts = collector.get_post_candidates(page)
 
-            first_post = posts.nth(0)
+            print(f"Found {posts.count()} posts")
 
-            post = parser.parse(first_post)
+            print(parser.parse(posts.nth(0)))
 
-            print(post)
-
-            input("Check search results and then press Enter...")
+            input("Press Enter to continue...")
 
             page.close()
 

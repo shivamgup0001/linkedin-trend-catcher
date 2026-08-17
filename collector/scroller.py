@@ -5,7 +5,7 @@ class LinkedInScroller:
     Responsible only for loading more content by scrolling
     """
 
-    def scroll(self, page: Page, max_scrolls: int =1):
+    def scroll(self, page: Page, max_scrolls: int =3):
         previous_height = 0
 
         for i in range(max_scrolls):
@@ -29,7 +29,7 @@ class LinkedInScroller:
             page.wait_for_timeout(2000)  # Wait for 2 seconds
 
             # Check if the page grew
-            new_height = ("""
+            new_height = page.evaluate("""
                 () => {
                     const container = document.querySelector("main#workspace");
                     return container.scrollHeight;
