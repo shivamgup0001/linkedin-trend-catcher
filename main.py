@@ -49,11 +49,14 @@ def main():
 
             print(f"Found {posts.count()} posts")
 
-            post = parser.parse(posts.nth(0))
+            for i in range(posts.count()):
 
-            db.save_post(post)
-            print(post)
-            print("Saved to MongoDB")
+                try:
+                    post = parser.parse(posts.nth(i))
+                    db.save_post(post)
+
+                except Exception as e:
+                    print(f"Failed on post {i+1}: {e}")
 
             input("Press Enter to continue...")
 

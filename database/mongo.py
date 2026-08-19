@@ -13,4 +13,18 @@ class MongoDB:
         self.collection = self.db[os.getenv("COLLECTION_NAME")]
 
     def save_post(self, post):
-        self.collection.insert_one(asdict(post))
+
+        post_dict = asdict(post)
+
+        existing_post = self.collection.find_one({
+            "author": post.author,
+            "text": post.text
+        })
+
+        if existing_post:
+            print(f"Skipped duplicate: {post.author}")
+            return
+
+        self.collection.insert_one(post_dict)
+
+        print(f"Saved: {post.author}")
