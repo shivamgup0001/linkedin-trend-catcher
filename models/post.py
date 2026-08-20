@@ -5,6 +5,8 @@ from dataclasses import field
 
 @dataclass
 class Post:
+    keyword: str
+
     activity_id: Optional[str] = None
     author: Optional[str] = None
     author_url: Optional[str] = None

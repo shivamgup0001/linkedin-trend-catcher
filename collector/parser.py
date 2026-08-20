@@ -5,10 +5,11 @@ from urllib.parse import unquote
 
 class LinkedInParser:
 
-    def parse(self, post: Locator):
+    def parse(self, post: Locator, keyword: str):
 
         media_type = self._get_media_type(post)
         return Post(
+            keyword = keyword,
             activity_id=self._get_activity_id(post),
             author=self._get_author(post),
             author_url=self._get_author_url(post),

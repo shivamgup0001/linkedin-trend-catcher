@@ -10,11 +10,17 @@ from collector.interceptor import NetworkInterceptor
 
 from database.mongo import MongoDB
 
+from analytics.trend_analyzer import TrendAnalyzer
+from analytics.report_printer import ReportPrinter
 
 def main():
     keywords = load_keywords()
 
     db = MongoDB()
+
+    analyzer = TrendAnalyzer(db.collection)
+
+    printer = ReportPrinter()
 
     with sync_playwright() as playwright:
         auth = LinkedInAuth(playwright)
@@ -52,7 +58,7 @@ def main():
             for i in range(posts.count()):
 
                 try:
-                    post = parser.parse(posts.nth(i))
+                    post = parser.parse(posts.nth(i), keyword)
                     db.save_post(post)
 
                 except Exception as e:
@@ -63,6 +69,10 @@ def main():
             page.close()
 
         context.close()
+
+    report = analyzer.generate_report()
+
+    printer.print(report)
 
 if __name__ == "__main__":
     main()
