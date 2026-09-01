@@ -28,7 +28,13 @@ class TrendAnalyzer:
 
         counter = Counter(authors)
 
-        return counter.most_common(limit)
+        return [
+            {
+                "author": author,
+                "posts": count
+            }
+            for author, count in counter.most_common(limit)
+        ]
 
     def top_hashtags(self, limit=10):
 
@@ -44,7 +50,13 @@ class TrendAnalyzer:
 
         counter = Counter(hashtags)
 
-        return counter.most_common(limit)
+        return [
+            {
+                "hashtag": hashtag,
+                "count": count
+            }
+            for hashtag, count in counter.most_common(limit)
+        ]
 
     def top_engagement_posts(self, limit=10):
 
@@ -60,7 +72,7 @@ class TrendAnalyzer:
 
             posts.append({
                 "author": post.get("author"),
-                "text": post.get("text"),
+                "keyword": post.get("keyword"),
                 "likes": likes,
                 "comments": comments,
                 "reposts": reposts,
@@ -84,7 +96,13 @@ class TrendAnalyzer:
 
         counter = Counter(keywords)
 
-        return counter.most_common()
+        return [
+            {
+                "keyword": keyword,
+                "posts": count
+            }
+            for keyword, count in counter.most_common()
+        ]
 
     def average_metrics(self):
 

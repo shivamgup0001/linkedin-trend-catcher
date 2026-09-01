@@ -13,6 +13,9 @@ from database.mongo import MongoDB
 from analytics.trend_analyzer import TrendAnalyzer
 from analytics.report_printer import ReportPrinter
 
+from ai.prompt_builder import PromptBuilder
+from ai.summarizer import Summarizer
+
 def main():
     keywords = load_keywords()
 
@@ -21,6 +24,10 @@ def main():
     analyzer = TrendAnalyzer(db.collection)
 
     printer = ReportPrinter()
+
+    builder = PromptBuilder()
+
+    summarizer = Summarizer()
 
     with sync_playwright() as playwright:
         auth = LinkedInAuth(playwright)
@@ -72,7 +79,15 @@ def main():
 
     report = analyzer.generate_report()
 
-    printer.print(report)
+    prompt = builder.build(report)
+
+    summary = summarizer.generate(prompt)
+
+    # printer.print(report)
+
+    # print(prompt)
+
+    print(summary)
 
 if __name__ == "__main__":
     main()
