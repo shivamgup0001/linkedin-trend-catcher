@@ -56,7 +56,7 @@ class LinkedInAuth:
         # ------------------
         print("\nNo LinkedIn session found.")
         print("A browser window will open.")
-        print("Please log into LinkedIn manuallly.\n")
+        print("Please log into LinkedIn manually.\n")
 
         context = browser.new_context()
 
@@ -67,6 +67,8 @@ class LinkedInAuth:
         input("Press Enter after logging in to LinkedIn...")
 
         try:
+            response = page.goto(LINKEDIN_FEED, wait_until="domcontentloaded")
+            require_safe_response(response)
             self._validate_page(page)
         except Exception:
             context.close()

@@ -46,8 +46,8 @@ class FakeAdapter:
         self.error = error
         self.calls = []
 
-    def load_candidates(self, page, source):
-        self.calls.append((page, source))
+    def load_candidates(self, page, source, candidate_limit=None):
+        self.calls.append((page, source, candidate_limit))
         if self.error:
             raise self.error
         return FakeCandidates(self.candidate_count)
@@ -163,6 +163,7 @@ class DiscoveryIntegrationTests(unittest.TestCase):
         self.assertTrue(all(page.closed for page in context.pages))
         for item in sources:
             self.assertEqual(adapters[item.source_type].calls[0][1], item)
+            self.assertEqual(adapters[item.source_type].calls[0][2], 5)
         self.assertEqual(
             [item.status for item in diagnostics.source_diagnostics],
             ["empty", "empty", "empty", "empty"],

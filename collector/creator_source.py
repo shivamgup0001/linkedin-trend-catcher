@@ -23,7 +23,9 @@ class CreatorSourceCollector:
         self.collector = collector or LinkedInCollector()
         self.last_status = "not_run"
 
-    def load_candidates(self, page: Page, source: DiscoverySource) -> Locator:
+    def load_candidates(
+        self, page: Page, source: DiscoverySource, candidate_limit=None
+    ) -> Locator:
         """Navigate to ``source`` activity and return its unparsed post candidates."""
         self.last_status = "loading"
         self._validate_source(source)
@@ -37,7 +39,12 @@ class CreatorSourceCollector:
         if not workspace_loaded:
             self.last_status = "workspace_missing"
             return self.collector.get_post_candidates(page)
-        candidates = load_scrolled_candidates(page, self.scroller, self.collector)
+        candidates = load_scrolled_candidates(
+            page,
+            self.scroller,
+            self.collector,
+            candidate_limit=candidate_limit,
+        )
         self.last_status = "ok"
         return candidates
 

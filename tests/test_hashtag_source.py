@@ -64,13 +64,9 @@ class HashtagSourceCollectorTests(unittest.TestCase):
                 page.wait_for_selector.assert_not_called()
 
     def test_waits_scrolls_and_returns_candidates(self):
-        initial_candidates = MagicMock()
-        initial_candidates.count.return_value = 2
-        loaded_candidates = MagicMock()
-        self.collector.get_post_candidates.side_effect = [
-            initial_candidates,
-            loaded_candidates,
-        ]
+        candidates = MagicMock()
+        candidates.count.return_value = 2
+        self.collector.get_post_candidates.return_value = candidates
         source = DiscoverySource(DiscoverySourceType.HASHTAG, "AI")
 
         result = self.source_collector.load_candidates(self.page, source)
@@ -81,7 +77,8 @@ class HashtagSourceCollectorTests(unittest.TestCase):
             timeout=10000
         )
         self.scroller.scroll.assert_called_once_with(self.page)
-        self.assertIs(result, loaded_candidates)
+        self.assertIs(result, candidates)
+        self.collector.get_post_candidates.assert_called_once_with(self.page)
 
     def test_zero_results_returns_empty_locator_without_scrolling(self):
         self.workspace.get_by_role.return_value.first.wait_for.side_effect = (

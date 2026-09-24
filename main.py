@@ -105,7 +105,11 @@ def discover_posts(
         try:
             page = context.new_page()
             print(f"Discovering {source.source_type.value}: {source.value}")
-            candidates = adapter.load_candidates(page, source)
+            candidates = adapter.load_candidates(
+                page,
+                source,
+                candidate_limit=max_candidates_per_source,
+            )
             if getattr(adapter, "last_status", "ok") == "workspace_missing":
                 raise RuntimeError(
                     "LinkedIn workspace was not available for this source layout"
@@ -275,7 +279,7 @@ def print_trends(db, observed_at, args):
         changes = post["changes"]
         print(
             f"{index}. {post['author'] or 'Unknown'} "
-            f"({post['keyword']}) | momentum {post['momentum_score']} "
+            f"({post['source_label']}) | momentum {post['momentum_score']} "
             f"({post['confidence']} confidence) "
             f"({post['weighted_growth']} weighted points over {post['hours']} hours) | "
             f"+{changes['likes'] or 0} reactions, "

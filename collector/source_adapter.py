@@ -18,7 +18,7 @@ class KeywordSourceCollector:
         self.scroller = scroller or LinkedInScroller()
         self.collector = collector or LinkedInCollector()
 
-    def load_candidates(self, page, source: DiscoverySource):
+    def load_candidates(self, page, source: DiscoverySource, candidate_limit=None):
         if getattr(source, "source_type", None) != DiscoverySourceType.KEYWORD:
             raise ValueError("KeywordSourceCollector requires a KEYWORD source")
         self.searcher.search(page, source.value)
@@ -26,6 +26,7 @@ class KeywordSourceCollector:
             page,
             self.scroller,
             self.collector,
+            candidate_limit=candidate_limit,
         )
 
 

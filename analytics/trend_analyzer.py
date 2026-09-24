@@ -38,6 +38,7 @@ class TrendAnalyzer:
                 "post_id": current["post_id"],
                 "author": post.get("author"),
                 "keyword": post.get("keyword"),
+                "source_label": self._source_label(post),
                 "post_url": post.get("post_url"),
                 "text": post.get("text"),
                 "posted_at": post.get("posted_at"),
@@ -50,6 +51,17 @@ class TrendAnalyzer:
             str(item["post_id"]),
         ))
         return ranked[:limit]
+
+    @staticmethod
+    def _source_label(post):
+        if post.get("keyword"):
+            return post["keyword"]
+        for source in post.get("discovery_sources") or []:
+            source_type = source.get("type")
+            source_value = source.get("value")
+            if source_type and source_value:
+                return f"{source_type}: {source_value}"
+        return "unknown source"
 
     @staticmethod
     def _post_age_hours(post, observed_at):

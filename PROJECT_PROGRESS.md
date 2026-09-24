@@ -22,20 +22,18 @@ logged the account out after detecting high activity. The final two scheduled
 runs therefore produced no usable observations.
 
 The LaunchAgent is intentionally **unloaded** and its future interval is now
-configured for twelve hours. The saved LinkedIn
-session currently redirects to the login page and must be renewed manually.
-Authentication fail-fast behavior and lower limits are implemented and mocked;
-do not restart scheduled collection until they pass a controlled live run.
+configured for twelve hours. The LinkedIn session was renewed and a controlled
+one-candidate discovery run reached all nine configured sources. A subsequent
+three-post direct refresh completed with 3 successes and 0 failures. Bounded
+loading is mocked but has not been rerun live; the scheduler remains stopped.
 
 Verification at this checkpoint:
 
-- `python3 -m unittest discover -s tests -v`: **84 tests passed**
+- `python3 -m unittest discover -s tests -v`: **88 tests passed**
 - Tests are mocked/unit-level and do not contact LinkedIn or MongoDB.
-- Live multi-source verification succeeded before the account session was
-  invalidated; later failures were operational/authentication failures rather
-  than evidence that every source collector broke simultaneously.
-- Python compilation passed at the preceding company-source checkpoint; the
-  full suite imports and executes the current Python modules successfully.
+- Live discovery reached all nine sources after renewing the session, saving 7
+  posts; a controlled direct refresh then completed 3/3 successfully.
+- Python compilation and plist validation pass.
 - The working tree contains substantial uncommitted work. Check `git status`
   before editing, and do not discard or overwrite those changes.
 
@@ -68,7 +66,8 @@ persist post metadata + source attribution + engagement snapshot
 
 Ordinary discovery-source failures are isolated and later sources continue.
 Authentication challenges and HTTP 429 responses stop the full run. Candidate
-processing defaults to 5 items per source.
+processing defaults to 5 items per source, and loading stops scrolling as soon
+as that many candidates are available.
 
 ## What is built
 
@@ -337,9 +336,9 @@ All positive numeric options are validated by the CLI.
 
 ## Known gaps and risks
 
-1. **Safe live re-verification is pending.** Multi-source collection worked in
-   a live run, but the saved session has since expired. A fresh low-volume smoke
-   test is required after manual login and authentication hardening.
+1. **Bounded loading still needs eventual live observation.** Its stop condition
+   is mocked and unit-tested, but another immediate discovery run would add
+   unnecessary account activity. Confirm it during the next deliberate run.
 2. **LinkedIn automation is inherently brittle.** UI/DOM changes can invalidate
    selectors even when unit tests remain green.
 3. **No end-to-end MongoDB integration test exists.** Persistence behavior is
@@ -354,10 +353,6 @@ All positive numeric options are validated by the CLI.
 8. **Operational compliance needs review.** Before production use, confirm the
    collection approach complies with LinkedIn terms, organizational policies,
    applicable privacy requirements, and rate limits.
-9. **Safety controls still need live verification.** Startup session validation,
-   authentication/rate-limit fail-fast behavior, 15 refreshes, 5 candidates per
-   source, a 5-day tracking window, and a 12-hour schedule are implemented and
-   mocked but have not yet been exercised against the renewed session.
 
 ## Recommended next steps
 
@@ -366,8 +361,9 @@ All positive numeric options are validated by the CLI.
       signup, cold-join, checkpoint, or logged-out layouts.
 - [x] Reduce refresh and per-source candidate limits, lengthen the schedule,
       and stop immediately after authentication or HTTP 429 warnings.
-- [ ] Renew the LinkedIn session manually, then perform a small controlled smoke
+- [x] Renew the LinkedIn session manually, then perform a small controlled smoke
       test for one source of each type.
+- [x] Complete a controlled direct refresh of 3 saved posts with no failures.
 - [ ] Record observed LinkedIn layouts and fix selectors only where evidence
       shows a mismatch.
 - [ ] Verify one real MongoDB write/read cycle in a non-production database.
@@ -392,6 +388,22 @@ Do not mark something complete merely because code exists. Record whether it is
 unit-tested, integration-tested, and live-verified separately.
 
 ## Progress log
+
+### 2026-09-24 — Bounded discovery loading after live smoke test
+
+- Renewed the LinkedIn session and completed a one-candidate live discovery
+  across all nine configured keyword, hashtag, creator, and company sources.
+- Saved 7 posts, found 6 directly refreshable posts, resolved 3 canonical URLs,
+  rejected 2 non-post candidates, and recorded 3 missing-reaction warnings.
+- The run exposed that processing limits were applied only after up to 10
+  scrolls; candidate limits now stop loading as soon as enough results exist.
+- Terminal rankings now show creator/company/hashtag attribution instead of
+  `None` when a post has no legacy keyword.
+- Ran the complete mocked suite (88 tests) and compilation checks.
+- Completed a controlled 3-post direct refresh afterward: 3 saved, 0 failed.
+  No posts met the six-hour/minimum-growth ranking threshold, which is valid.
+- The scheduler remained stopped; bounded loading can be observed during the
+  next deliberate discovery run after an account cooldown.
 
 ### 2026-09-24 — Collection safety limits and fail-fast handling
 

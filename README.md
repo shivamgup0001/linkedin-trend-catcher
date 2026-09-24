@@ -48,7 +48,7 @@ The ranking compares the current reading with the newest eligible baseline. It w
 
 During discovery, the collector uses each post's Copy link to post action to obtain its canonical URL and activity ID. DOM extraction is used as a fallback. When LinkedIn exposes neither, it creates a deterministic fingerprint from the normalized author and post text. Activity URLs are refreshed directly. Fingerprinted posts can be compared when they reappear in search results, but cannot be revisited directly if they disappear from those results.
 
-Ordinary source failures are isolated: they are recorded in `collection_runs` and later sources continue. Authentication challenges and HTTP 429 responses stop the whole run immediately. Defaults are limited to 5 candidates per source and 15 direct refreshes per run. Post documents retain all keyword, hashtag, creator, and company origins in `discovery_sources` while keeping the legacy `keyword` field compatible.
+Ordinary source failures are isolated: they are recorded in `collection_runs` and later sources continue. Authentication challenges and HTTP 429 responses stop the whole run immediately. Defaults are limited to 5 candidates per source and 15 direct refreshes per run. Candidate loading also stops scrolling as soon as the per-source limit is available. Post documents retain all keyword, hashtag, creator, and company origins in `discovery_sources` while keeping the legacy `keyword` field compatible.
 
 ## Dashboard
 

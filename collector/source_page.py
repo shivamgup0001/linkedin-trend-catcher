@@ -48,11 +48,21 @@ def load_scrolled_candidates(
     scroller,
     collector,
     skip_scroll_when_empty=False,
+    candidate_limit=None,
 ):
     """Use the shared scroller and candidate locator after source navigation."""
-    if skip_scroll_when_empty:
-        candidates = collector.get_post_candidates(page)
-        if candidates.count() == 0:
-            return candidates
-    scroller.scroll(page)
-    return collector.get_post_candidates(page)
+    candidates = collector.get_post_candidates(page)
+    initial_count = candidates.count()
+    if skip_scroll_when_empty and initial_count == 0:
+        return candidates
+    if candidate_limit is not None and initial_count >= candidate_limit:
+        print("Candidate limit already available; skipping scroll.")
+        return candidates
+    if candidate_limit is None:
+        scroller.scroll(page)
+    else:
+        scroller.scroll(
+            page,
+            stop_when=lambda: candidates.count() >= candidate_limit,
+        )
+    return candidates

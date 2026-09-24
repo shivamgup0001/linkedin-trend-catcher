@@ -99,7 +99,7 @@ class TrackingTests(unittest.TestCase):
         posts = FakeDocuments([{
             "post_id": "post-1",
             "author": "Jane",
-            "keyword": "SaaS",
+            "discovery_sources": [{"type": "creator", "value": "Jane Doe"}],
             "post_url": "https://www.linkedin.com/posts/example/",
             "posted_at": "2h",
         }])
@@ -116,6 +116,7 @@ class TrackingTests(unittest.TestCase):
         self.assertEqual(ranked[0]["score_per_hour"], 10)
         self.assertEqual(ranked[0]["momentum_score"], 1.67)
         self.assertEqual(ranked[0]["confidence"], "low")
+        self.assertEqual(ranked[0]["source_label"], "creator: Jane Doe")
 
     def test_engagement_reports_use_latest_snapshots(self):
         start = datetime(2026, 1, 1, tzinfo=timezone.utc)

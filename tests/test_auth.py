@@ -1,5 +1,5 @@
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, call, patch
 
 from collector.auth import LINKEDIN_FEED, LinkedInAuth
 from collector.session import LinkedInAuthenticationError
@@ -46,6 +46,30 @@ class LinkedInAuthTests(unittest.TestCase):
         page.close.assert_called_once()
         context.close.assert_called_once()
         browser.close.assert_called_once()
+
+    @patch("collector.auth.input", return_value="")
+    @patch("collector.auth.SESSION_DIR")
+    @patch("collector.auth.SESSION_FILE")
+    def test_manual_login_reopens_feed_before_saving(
+        self, session_file, session_dir, user_input
+    ):
+        session_file.exists.return_value = False
+        playwright, browser, context, page = fake_playwright(LINKEDIN_FEED)
+
+        result = LinkedInAuth(playwright).get_authenticated_context()
+
+        self.assertIs(result, context)
+        self.assertEqual(
+            page.goto.call_args_list,
+            [
+                call(LINKEDIN_FEED),
+                call(LINKEDIN_FEED, wait_until="domcontentloaded"),
+            ],
+        )
+        page.wait_for_selector.assert_called_once_with("main#workspace", timeout=10000)
+        context.storage_state.assert_called_once_with(path=str(session_file))
+        context.close.assert_not_called()
+        browser.close.assert_not_called()
 
 
 if __name__ == "__main__":

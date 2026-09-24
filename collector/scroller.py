@@ -5,10 +5,14 @@ class LinkedInScroller:
     Responsible only for loading more content by scrolling
     """
 
-    def scroll(self, page: Page, max_scrolls: int = 10):
+    def scroll(self, page: Page, max_scrolls: int = 10, stop_when=None):
         previous_height = 0
 
         for i in range(max_scrolls):
+            if stop_when is not None and stop_when():
+                print("Candidate limit reached; stopping scroll.")
+                break
+
             # Get the current height of the page
             previous_height = page.evaluate("""
                 () => {
@@ -46,6 +50,10 @@ class LinkedInScroller:
             """)
 
             print(f"Scroll {i+1}: {new_height} (previous: {previous_height})")
+
+            if stop_when is not None and stop_when():
+                print("Candidate limit reached; stopping scroll.")
+                break
 
             if new_height == previous_height:
                 print("Reached end of loaded content.")

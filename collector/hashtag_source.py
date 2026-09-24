@@ -18,7 +18,9 @@ class HashtagSourceCollector:
         self.scroller = scroller or LinkedInScroller()
         self.collector = collector or LinkedInCollector()
 
-    def load_candidates(self, page: Page, source: DiscoverySource) -> Locator:
+    def load_candidates(
+        self, page: Page, source: DiscoverySource, candidate_limit=None
+    ) -> Locator:
         if (
             not isinstance(source, DiscoverySource)
             or source.source_type != DiscoverySourceType.HASHTAG
@@ -45,4 +47,5 @@ class HashtagSourceCollector:
             self.scroller,
             self.collector,
             skip_scroll_when_empty=True,
+            candidate_limit=candidate_limit,
         )
