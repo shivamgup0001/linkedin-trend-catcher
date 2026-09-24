@@ -213,6 +213,8 @@ Key file: `models/collection_run.py`
   filters.
 - Post detail view with metadata, source attribution, exact LinkedIn URL, and
   engagement history.
+- Post detail offers a newest-first selector for every saved post and preserves
+  table selections across Streamlit reruns.
 - Collection Health view backed by persisted run and per-source diagnostics.
 - Dashboard data functions support both new multi-source documents and legacy
   keyword-only documents.
@@ -384,6 +386,15 @@ Do not mark something complete merely because code exists. Record whether it is
 unit-tested, integration-tested, and live-verified separately.
 
 ## Progress log
+
+### 2026-09-24 — Private dashboard deployment and post selection
+
+- Deployed the read-only dashboard from the private GitHub repository to
+  Streamlit Community Cloud with MongoDB credentials stored as platform
+  secrets rather than committed files.
+- Kept the deployed app private with viewer access controlled by invitation.
+- Added a persistent, searchable Post Detail selector so the view no longer
+  depends exclusively on a temporary Trending Posts table selection.
 
 ### 2026-09-24 — Automation paused after LinkedIn account logout
 

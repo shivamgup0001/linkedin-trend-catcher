@@ -5,6 +5,7 @@ from dashboard_data import (
     DashboardDataAccess,
     build_collection_run_rows,
     build_overview,
+    build_post_selector_options,
     build_trend_rows,
     filter_trend_rows,
     latest_snapshot,
@@ -40,6 +41,34 @@ class DashboardDataTests(unittest.TestCase):
         ])
         self.assertIs(result, newest)
         self.assertIsNone(latest_snapshot([{"post_id": "one"}]))
+
+    def test_post_selector_options_are_newest_first_and_readable(self):
+        options = build_post_selector_options([
+            {
+                "post_id": "older",
+                "author": "Ada",
+                "text": "An older post",
+                "last_seen_at": self.start,
+            },
+            {
+                "post_id": "newer",
+                "author": "Grace",
+                "text": "A newer post with   normalized spacing",
+                "last_seen_at": self.start + timedelta(hours=1),
+            },
+            {"author": "Missing identity"},
+        ])
+
+        self.assertEqual([item["post_id"] for item in options], ["newer", "older"])
+        self.assertEqual(
+            options[0]["label"],
+            "Grace | A newer post with normalized spacing",
+        )
+
+    def test_post_selector_uses_identity_when_text_is_missing(self):
+        options = build_post_selector_options([{"post_id": "activity:123"}])
+
+        self.assertEqual(options[0]["label"], "Unknown author | activity:123")
 
     def test_trend_rows_use_latest_snapshot_and_eligible_baseline(self):
         posts = [{

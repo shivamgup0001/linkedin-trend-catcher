@@ -120,6 +120,31 @@ def normalized_discovery_sources(post):
     return sources
 
 
+def build_post_selector_options(posts, preview_length=80):
+    """Build newest-first labels for selecting any saved post."""
+    options = []
+    minimum = datetime.min.replace(tzinfo=timezone.utc)
+    for post in posts:
+        post_id = post.get("post_id")
+        if not post_id:
+            continue
+        author = post.get("author") or "Unknown author"
+        text = " ".join(str(post.get("text") or "").split())
+        if len(text) > preview_length:
+            text = text[: preview_length - 3].rstrip() + "..."
+        label = f"{author} | {text}" if text else f"{author} | {post_id}"
+        options.append({
+            "post_id": post_id,
+            "label": label,
+            "last_seen_at": _as_utc(post.get("last_seen_at")) or minimum,
+        })
+    options.sort(
+        key=lambda item: (item["last_seen_at"], str(item["post_id"])),
+        reverse=True,
+    )
+    return options
+
+
 def build_trend_rows(posts, snapshots, min_window_hours=1):
     """Build ranked rows from each post's latest eligible snapshot pair."""
     snapshots_by_post = defaultdict(list)

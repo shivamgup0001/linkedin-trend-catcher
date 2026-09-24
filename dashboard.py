@@ -8,6 +8,7 @@ from dashboard_data import (
     DashboardDataAccess,
     build_collection_run_rows,
     build_overview,
+    build_post_selector_options,
     build_source_health_rows,
     build_trend_rows,
     filter_trend_rows,
@@ -58,6 +59,13 @@ except DiscoveryConfigError as error:
 
 run_rows = build_collection_run_rows(collection_runs)
 source_health_rows = build_source_health_rows(collection_runs)
+post_options = build_post_selector_options(posts)
+post_option_ids = [option["post_id"] for option in post_options]
+post_option_labels = {
+    option["post_id"]: option["label"] for option in post_options
+}
+if st.session_state.get("selected_post_id") not in post_option_ids:
+    st.session_state.selected_post_id = post_option_ids[0] if post_option_ids else None
 overview_tab, trending_tab, detail_tab, health_tab = st.tabs(
     ["Overview", "Trending Posts", "Post Detail", "Collection Health"]
 )
@@ -87,7 +95,7 @@ with overview_tab:
             f"{format_time(latest_run['started_at'])}"
         )
 
-selected_post_id = None
+selected_from_trends = None
 with trending_tab:
     st.caption(
         "Weighted growth = reactions × "
@@ -173,13 +181,26 @@ with trending_tab:
         )
         selected_rows = event.selection.rows
         if selected_rows:
-            selected_post_id = trend_rows[selected_rows[0]]["post_id"]
+            selected_from_trends = trend_rows[selected_rows[0]]["post_id"]
+            st.session_state.selected_post_id = selected_from_trends
             st.caption("The selected row is shown in Post Detail.")
 
 with detail_tab:
-    if selected_post_id is None:
-        st.info("Select a row in Trending Posts to inspect its post and snapshot history.")
+    if not post_options:
+        st.info("No saved posts are available to inspect.")
     else:
+        if selected_from_trends is not None:
+            st.session_state.post_detail_selector = selected_from_trends
+        elif st.session_state.get("post_detail_selector") not in post_option_ids:
+            st.session_state.post_detail_selector = st.session_state.selected_post_id
+
+        selected_post_id = st.selectbox(
+            "Post",
+            post_option_ids,
+            key="post_detail_selector",
+            format_func=lambda post_id: post_option_labels[post_id],
+        )
+        st.session_state.selected_post_id = selected_post_id
         post, history = data_access.post_detail(selected_post_id)
         if not post:
             st.warning("The selected post is no longer available.")
