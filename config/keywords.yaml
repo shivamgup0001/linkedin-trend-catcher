@@ -1,6 +1,140 @@
-keywords:
-  - AI Agents
-  # - Insurance
-  # - FinTech
-  # - SaaS
-  # - Startups
+discovery:
+  keywords:
+    - value: SaaS
+      enabled: true
+    - value: AI Agents
+      enabled: true
+    - value: B2B SaaS
+      enabled: false
+    - value: Voice AI Agents
+      enabled: false
+    - value: Agentic AI
+      enabled: false
+    - value: AI Automation
+      enabled: false
+    - value: Enterprise AI
+      enabled: false
+    - value: AI Strategy
+      enabled: false
+    - value: AI Agent Observability
+      enabled: false
+    - value: AI Developer Tools
+      enabled: false
+    - value: Model Context Protocol
+      enabled: false
+    - value: AI Startups
+      enabled: false
+    - value: Startup Funding
+      enabled: false
+    - value: Venture Capital
+      enabled: false
+    - value: AI Product Management
+      enabled: false
+    - value: FinTech
+      enabled: false
+    - value: InsurTech
+      enabled: false
+    - value: Embedded Insurance
+      enabled: false
+
+  hashtags:
+    - value: saas
+      enabled: true
+    - value: b2bsaas
+      enabled: false
+    - value: aiagents
+      enabled: true
+    - value: agenticai
+      enabled: false
+    - value: voiceai
+      enabled: false
+    - value: enterpriseai
+      enabled: false
+    - value: aiautomation
+      enabled: false
+    - value: aistrategy
+      enabled: false
+    - value: aiobservability
+      enabled: false
+    - value: aidevelopertools
+      enabled: false
+    - value: modelcontextprotocol
+      enabled: false
+    - value: aistartups
+      enabled: false
+    - value: venturecapital
+      enabled: false
+    - value: fintech
+      enabled: false
+    - value: insurtech
+      enabled: false
+
+  creators:
+    - name: Owais Chunawala
+      profile_url: https://www.linkedin.com/in/owaischunawala/
+      enabled: true
+    - name: Aviral Bhatnagar
+      profile_url: https://www.linkedin.com/in/aviral-bhatnagar-ajuniorvc/
+      enabled: true
+    - name: Rujuta Singh
+      profile_url: https://www.linkedin.com/in/rujutasingh/
+      enabled: true
+    - name: Siddharth Shankar Tripathi
+      profile_url: https://www.linkedin.com/in/sidsst/
+      enabled: false
+    - name: Ben Cera
+      profile_url: https://www.linkedin.com/in/benbroca/
+      enabled: false
+    - name: Aman Goel
+      profile_url: https://www.linkedin.com/in/goel-aman/
+      enabled: false
+    - name: Muqadus Bashir
+      profile_url: https://www.linkedin.com/in/muqadusbashir/
+      enabled: false
+    - name: Rohan Vasishth
+      profile_url: https://www.linkedin.com/in/rohanvas/
+      enabled: false
+    - name: Arjun Jain
+      profile_url: https://www.linkedin.com/in/arjunjain/
+      enabled: false
+    - name: Mathilde Collin
+      profile_url: https://www.linkedin.com/in/mathilde-collin-bb59492a/
+      enabled: false
+    - name: Nicolas Dessaigne
+      profile_url: https://www.linkedin.com/in/nicolasdessaigne/
+      enabled: false
+    - name: Arnaud Benard
+      profile_url: https://www.linkedin.com/in/arnaudbenard/
+      enabled: false
+    - name: Pietro Zullo
+      profile_url: https://www.linkedin.com/in/pietrozullo/
+      enabled: false
+    - name: Etisha Garg
+      profile_url: https://www.linkedin.com/in/etisha-garg/
+      enabled: false
+
+  companies:
+    - name: OpenAI
+      page_url: https://www.linkedin.com/company/openai/
+      enabled: true
+    - name: Anthropic
+      page_url: https://www.linkedin.com/company/anthropicresearch/
+      enabled: true
+    - name: LangChain
+      page_url: https://www.linkedin.com/company/langchain/
+      enabled: false
+    - name: HubSpot
+      page_url: https://www.linkedin.com/company/hubspot/
+      enabled: false
+    - name: SaaStr Ai
+      page_url: https://www.linkedin.com/company/saastr/
+      enabled: false
+    - name: Paddle
+      page_url: https://www.linkedin.com/company/paddle/
+      enabled: false
+    - name: Zapier
+      page_url: https://www.linkedin.com/company/zapier/
+      enabled: false
+    - name: Salesforce
+      page_url: https://www.linkedin.com/company/salesforce/
+      enabled: false

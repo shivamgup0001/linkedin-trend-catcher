@@ -5,14 +5,17 @@ class LinkedInScroller:
     Responsible only for loading more content by scrolling
     """
 
-    def scroll(self, page: Page, max_scrolls: int =3):
+    def scroll(self, page: Page, max_scrolls: int = 10):
         previous_height = 0
 
         for i in range(max_scrolls):
             # Get the current height of the page
             previous_height = page.evaluate("""
                 () => {
-                    const container = document.querySelector("main#workspace");
+                    const container = document.querySelector("main#workspace")
+                        || document.querySelector(".scaffold-finite-scroll")
+                        || document.querySelector("main");
+                    if (!container) return 0;
                     return container.scrollHeight;
                 }
             """)
@@ -20,7 +23,10 @@ class LinkedInScroller:
             # Scroll down to the bottom of the page
             page.evaluate("""
                 () => {
-                    const container = document.querySelector("main#workspace");
+                    const container = document.querySelector("main#workspace")
+                        || document.querySelector(".scaffold-finite-scroll")
+                        || document.querySelector("main");
+                    if (!container) return;
                     container.scrollTo(0, container.scrollHeight);
                 }
             """)
@@ -31,7 +37,10 @@ class LinkedInScroller:
             # Check if the page grew
             new_height = page.evaluate("""
                 () => {
-                    const container = document.querySelector("main#workspace");
+                    const container = document.querySelector("main#workspace")
+                        || document.querySelector(".scaffold-finite-scroll")
+                        || document.querySelector("main");
+                    if (!container) return 0;
                     return container.scrollHeight;
                 }
             """)

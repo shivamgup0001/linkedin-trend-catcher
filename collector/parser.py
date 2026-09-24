@@ -1,7 +1,8 @@
-from playwright.sync_api import Locator
+from playwright.sync_api import Locator, Page
 from models.post import Post
+import html
 import re
-from urllib.parse import unquote
+from urllib.parse import unquote, urljoin, urlsplit, urlunsplit
 
 class LinkedInParser:
 
@@ -24,11 +25,68 @@ class LinkedInParser:
         )
 
     def _get_activity_id(self, post):
+        url = self._get_post_url(post)
+        if url:
+            activity_id = self._extract_activity_id(url)
+            if activity_id:
+                return activity_id
+
+        candidates = [post, post.locator("[data-urn], [data-id]")]
+        for candidate in candidates:
+            for index in range(candidate.count()):
+                for attribute in ("data-urn", "data-id"):
+                    value = candidate.nth(index).get_attribute(attribute) or ""
+                    match = re.search(r"urn:li:(?:activity|ugcPost):(\d+)", value)
+                    if match:
+                        return match.group(1)
+
+        try:
+            markup = unquote(html.unescape(post.evaluate("element => element.outerHTML")))
+            match = re.search(
+                r"(?:urn:li:(?:activity|ugcPost):|liveVideoUpdateReplaceableSlot:)(\d{10,})",
+                markup,
+            )
+            if match:
+                return match.group(1)
+        except Exception:
+            pass
         return None
+
+    @staticmethod
+    def _extract_activity_id(value):
+        match = re.search(r"(?:urn:li:(?:activity|ugcPost):|(?:activity|ugcPost)-)(\d+)", value)
+        return match.group(1) if match else None
+
+    def resolve_post_url_from_menu(self, page: Page, post: Locator):
+        original_clipboard = None
+        try:
+            original_clipboard = page.evaluate("navigator.clipboard.readText()")
+            page.evaluate("navigator.clipboard.writeText('')")
+            menu_button = post.get_by_role("button", name="Open control menu for post", exact=False)
+            if menu_button.count() == 0:
+                return None
+            post.scroll_into_view_if_needed(timeout=2000)
+            page.wait_for_timeout(200)
+            menu_button.first.click(timeout=2000)
+            copy_item = page.get_by_role("menuitem", name="Copy link to post", exact=False)
+            copy_item.first.wait_for(state="visible", timeout=3000)
+            copy_item.first.click(timeout=2000)
+            page.wait_for_timeout(100)
+            url = page.evaluate("navigator.clipboard.readText()")
+            return self._normalize_post_url(url)
+        except Exception:
+            return None
+        finally:
+            page.keyboard.press("Escape")
+            if original_clipboard is not None:
+                try:
+                    page.evaluate("text => navigator.clipboard.writeText(text)", original_clipboard)
+                except Exception:
+                    pass
 
     def _get_author(self, post: Locator):
         try:
-            links = post.locator('a[href*="/in/"]')
+            links = self._get_author_links(post)
 
             for i in range(links.count()):
                 text = links.nth(i).text_content()
@@ -43,7 +101,7 @@ class LinkedInParser:
 
     def _get_author_url(self, post: Locator):
         try:
-            links = post.locator('a[href*="/in/"]')
+            links = self._get_author_links(post)
 
             for i in range(links.count()):
                 href = links.nth(i).get_attribute("href")
@@ -58,7 +116,10 @@ class LinkedInParser:
 
     def _get_text(self, post: Locator):
         try:
-            text = post.locator('[data-testid="expandable-text-box"]').text_content()
+            text_box = post.locator('[data-testid="expandable-text-box"]')
+            if text_box.count() == 0:
+                return None
+            text = text_box.first.text_content(timeout=2000)
             return text.strip() if text else ""
         except Exception:
             return None
@@ -66,7 +127,7 @@ class LinkedInParser:
     def _get_posted_at(self, post: Locator):
         text = post.text_content() or ""
 
-        match = re.search(r"\d+(?:s|m|h|d|w|mo|y)", text)
+        match = re.search(r"\d+(?:mo|s|m|h|d|w|y)", text)
 
         if match:
             return match.group(0)
@@ -74,58 +135,35 @@ class LinkedInParser:
         return None
 
     def _get_likes(self, post: Locator):
-        try:
-            links = post.get_by_role("link")
-
-            for i in range(links.count()):
-                text = (links.nth(i).text_content() or "").strip()
-
-                if "reaction" in text.lower():
-                    match = re.search(r"(\d+)\s+reactions?", text)
-
-                    if match:
-                        return int(match.group(1))
-
-            return None
-
-        except Exception:
-            return None
+        return self._get_metric(post, "reaction", default=0)
 
     def _get_reposts(self, post: Locator):
-        try:
-            links = post.get_by_role("link")
-
-            for i in range(links.count()):
-                text = (links.nth(i).text_content() or "").strip()
-
-                if "repost" in text.lower():
-                    match = re.search(r"(\d+)", text)
-
-                    if match:
-                        return int(match.group(1))
-
-            return 0
-
-        except Exception:
-            return 0
+        return self._get_metric(post, "repost", default=0)
 
     def _get_comments(self, post: Locator):
+        return self._get_metric(post, "comment", default=0)
+
+    def _get_metric(self, post: Locator, noun: str, default):
         try:
-            buttons = post.get_by_role("button")
-
-            for i in range(buttons.count()):
-                text = (buttons.nth(i).text_content() or "").strip()
-
-                if "comment" in text.lower():
-                    match = re.search(r"(\d+)", text)
-
-                    if match:
-                        return int(match.group(1))
-
-            return 0
-
+            saw_metric_label = False
+            for role in ("link", "button"):
+                elements = post.get_by_role(role)
+                for index in range(elements.count()):
+                    element = elements.nth(index)
+                    values = (
+                        element.text_content() or "",
+                        element.get_attribute("aria-label") or "",
+                    )
+                    for value in values:
+                        if noun not in value.lower():
+                            continue
+                        saw_metric_label = True
+                        count = self._parse_metric_count(value, noun)
+                        if count is not None:
+                            return count
+            return None if saw_metric_label else default
         except Exception:
-            return 0
+            return default
 
     def _get_media_type(self, post: Locator):
 
@@ -149,10 +187,101 @@ class LinkedInParser:
 
         return None
 
+    @staticmethod
+    def _parse_metric_count(text, noun):
+        match = re.search(
+            rf"(\d[\d,]*(?:\.\d+)?\s*[KMB]?)\s*{noun}s?",
+            text,
+            re.IGNORECASE,
+        )
+        if not match:
+            match = re.search(
+                rf"{noun}s?\s*(\d[\d,]*(?:\.\d+)?\s*[KMB]?)",
+                text,
+                re.IGNORECASE,
+            )
+        if not match:
+            return None
+
+        value = match.group(1).replace(",", "").replace(" ", "")
+        multiplier = 1
+        if value[-1:].upper() in {"K", "M", "B"}:
+            multiplier = {"K": 1_000, "M": 1_000_000, "B": 1_000_000_000}[value[-1].upper()]
+            value = value[:-1]
+        return int(float(value) * multiplier)
+
     def _get_post_url(self, post: Locator):
         """
-        TODO:
-        Search results do not expose the canonical LinkedIn post URL.
-        Implement after activity_id extraction or via a different endpoint.
+        Returns the canonical LinkedIn URL when it is exposed.
+
+        Supports:
+        - Feed posts
+        - UGC posts
+        - Pulse articles
+        - Group posts (via highlightedUpdateUrn)
+
+        Returns None if no canonical URL is available.
         """
+
+        links = post.locator("a")
+
+        for i in range(links.count()):
+
+            try:
+                href = links.nth(i).get_attribute("href")
+
+                if not href:
+                    continue
+
+                if "/feed/update/" in href:
+                    return self._normalize_post_url(urljoin("https://www.linkedin.com", href))
+
+                if "/posts/" in href:
+                    return self._normalize_post_url(urljoin("https://www.linkedin.com", href))
+
+                if "/pulse/" in href:
+                    return self._normalize_post_url(urljoin("https://www.linkedin.com", href))
+
+                match = re.search(r"highlightedUpdateUrn=(urn:li:(?:activity|ugcPost):\d+)", unquote(href))
+
+                if match:
+                    urn = match.group(1)
+                    return f"https://www.linkedin.com/feed/update/{urn}/"
+
+            except Exception:
+                continue
+
         return None
+
+    @staticmethod
+    def _get_author_links(post: Locator):
+        return post.locator(
+            'a[href*="/in/"], a[href*="/company/"], a[href*="/school/"]'
+        )
+
+    @staticmethod
+    def _normalize_post_url(value):
+        if not value:
+            return None
+        try:
+            parts = urlsplit(value.strip())
+            hostname = (parts.hostname or "").lower()
+            if hostname != "linkedin.com" and not hostname.endswith(".linkedin.com"):
+                return None
+            path = parts.path.rstrip("/") + "/"
+            return urlunsplit(("https", "www.linkedin.com", path, "", ""))
+        except Exception:
+            return None
+
+    def _print_all_links(self, post):
+
+        links = post.locator("a")
+
+        print(f"\nFound {links.count()} links\n")
+
+        for i in range(links.count()):
+
+            href = links.nth(i).get_attribute("href")
+
+            if href:
+                print(href)

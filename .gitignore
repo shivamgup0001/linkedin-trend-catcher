@@ -35,3 +35,8 @@ data/auth/linkedin_state.json
 # Logs
 # =====================================
 *.log
+
+# =====================================
+# JavaScript dependencies
+# =====================================
+node_modules/

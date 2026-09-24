@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.linkedin-trend-catcher</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>/Users/devanshi/Shivam/LinkedIn Trend Catcher/linkedin-trend-catcher/scripts/run_once.sh</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/devanshi/Shivam/LinkedIn Trend Catcher/linkedin-trend-catcher</string>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>StartInterval</key>
+    <integer>10800</integer>
+    <key>StandardOutPath</key>
+    <string>/tmp/linkedin-trend-catcher.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/linkedin-trend-catcher.error.log</string>
+</dict>
+</plist>
