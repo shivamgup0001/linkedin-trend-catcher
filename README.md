@@ -39,16 +39,16 @@ The legacy `keywords:` list remains supported during migration. Duplicate source
 python3 main.py
 python3 main.py --mode discover
 python3 main.py --mode refresh --headless
-python3 main.py --mode discover --headless --max-candidates-per-source 30
+python3 main.py --mode discover --headless --max-candidates-per-source 5
 ```
 
 The default `all` mode directly refreshes saved activity URLs and then searches for new posts. The first run opens a browser for manual LinkedIn login and saves the session in `data/auth`. Later runs can use `--headless`. Each run stores post metadata in the configured collection and engagement history in `post_snapshots`.
 
-The ranking compares the current reading with the newest baseline that is at least one hour old. It weights gained reactions, comments, and reposts at 1, 3, and 5 points, then divides by elapsed hours. By default, it requires three weighted points of growth and a post age of no more than seven days. Configure these with `--min-window-hours`, `--min-growth`, and `--max-post-age-days`.
+The ranking compares the current reading with the newest eligible baseline. It weights gained reactions, comments, and reposts at 1, 3, and 5 points. Momentum measures stabilized absolute growth; Breakout measures stabilized growth relative to earlier engagement. Both use a six-hour rate floor and snapshot-based confidence so short intervals do not produce exaggerated rankings. By default, a baseline must be at least six hours old, growth must reach three weighted points, and the post must be no more than five days old. Configure these with `--min-window-hours`, `--min-growth`, and `--max-post-age-days`.
 
 During discovery, the collector uses each post's Copy link to post action to obtain its canonical URL and activity ID. DOM extraction is used as a fallback. When LinkedIn exposes neither, it creates a deterministic fingerprint from the normalized author and post text. Activity URLs are refreshed directly. Fingerprinted posts can be compared when they reappear in search results, but cannot be revisited directly if they disappear from those results.
 
-Each source is isolated: a failed source is recorded in `collection_runs` and later sources continue. Candidate processing defaults to 30 items per source. Post documents retain all keyword, hashtag, creator, and company origins in `discovery_sources` while keeping the legacy `keyword` field compatible.
+Ordinary source failures are isolated: they are recorded in `collection_runs` and later sources continue. Authentication challenges and HTTP 429 responses stop the whole run immediately. Defaults are limited to 5 candidates per source and 15 direct refreshes per run. Post documents retain all keyword, hashtag, creator, and company origins in `discovery_sources` while keeping the legacy `keyword` field compatible.
 
 ## Dashboard
 
@@ -62,7 +62,7 @@ The dashboard reads post metadata, `post_snapshots`, persisted `collection_runs`
 
 ## macOS Scheduling
 
-The included launch agent runs one collection every three hours without keeping the Python process alive:
+The included launch agent runs one collection every twelve hours without keeping the Python process alive. It remains disabled until a controlled live run succeeds:
 
 ```bash
 chmod +x scripts/run_once.sh

@@ -124,13 +124,15 @@ class CreatorSourceCollectorTests(unittest.TestCase):
         page = Mock()
         page.url = "https://www.linkedin.com/in/jane-doe/recent-activity/all/"
         page.wait_for_selector.side_effect = PlaywrightTimeoutError("no workspace id")
-        page.locator.return_value.count.return_value = 1
+        page.locator.side_effect = lambda selector: Mock(
+            **{"count.return_value": 1 if selector == "main" else 0}
+        )
         candidates = Mock()
         self.candidate_collector.get_post_candidates.return_value = candidates
 
         result = self.collector.load_candidates(page, self.creator())
 
-        page.locator.assert_called_once_with("main")
+        page.locator.assert_any_call("main")
         self.scroller.scroll.assert_called_once_with(page)
         self.assertIs(result, candidates)
         self.assertEqual(self.collector.last_status, "ok")

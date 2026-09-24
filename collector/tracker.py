@@ -1,6 +1,7 @@
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
 
 from collector.collector import LinkedInCollector
+from collector.session import require_authenticated_page, require_safe_response
 
 
 class LinkedInTracker:
@@ -9,8 +10,8 @@ class LinkedInTracker:
 
     def refresh(self, page, target):
         response = page.goto(target["post_url"], wait_until="domcontentloaded")
-        if "/login" in page.url or "/checkpoint/" in page.url:
-            raise RuntimeError("LinkedIn session expired; log in again before collecting")
+        require_safe_response(response)
+        require_authenticated_page(page)
 
         if response is not None and response.status >= 400:
             return {
@@ -21,6 +22,7 @@ class LinkedInTracker:
         try:
             page.wait_for_selector("main#workspace", timeout=10000)
         except PlaywrightTimeoutError:
+            require_authenticated_page(page)
             return {
                 "status": "workspace_missing",
                 "detail": f"Post workspace did not load; final URL: {page.url}",

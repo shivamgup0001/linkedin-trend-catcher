@@ -21,14 +21,15 @@ refreshes plus 30 candidates from each source every three hours. LinkedIn later
 logged the account out after detecting high activity. The final two scheduled
 runs therefore produced no usable observations.
 
-The three-hour LaunchAgent is intentionally **unloaded**. The saved LinkedIn
+The LaunchAgent is intentionally **unloaded** and its future interval is now
+configured for twelve hours. The saved LinkedIn
 session currently redirects to the login page and must be renewed manually.
-Do not restart scheduled collection until authentication fail-fast behavior,
-lower collection limits, and a longer interval are implemented and verified.
+Authentication fail-fast behavior and lower limits are implemented and mocked;
+do not restart scheduled collection until they pass a controlled live run.
 
 Verification at this checkpoint:
 
-- `python3 -m unittest discover -s tests -v`: **70 tests passed**
+- `python3 -m unittest discover -s tests -v`: **84 tests passed**
 - Tests are mocked/unit-level and do not contact LinkedIn or MongoDB.
 - Live multi-source verification succeeded before the account session was
   invalidated; later failures were operational/authentication failures rather
@@ -65,8 +66,9 @@ persist post metadata + source attribution + engagement snapshot
         +------> persist run/source diagnostics and show dashboard
 ```
 
-Each discovery source is isolated. A source failure is recorded and later
-sources continue. Candidate processing defaults to 30 items per source.
+Ordinary discovery-source failures are isolated and later sources continue.
+Authentication challenges and HTTP 429 responses stop the full run. Candidate
+processing defaults to 5 items per source.
 
 ## What is built
 
@@ -96,7 +98,8 @@ Key files:
 - Creator discovery generates `/in/<slug>/recent-activity/all/` URLs.
 - Company discovery generates `/company/<slug>/posts/?feedView=all` URLs.
 - URL generation uses structured URL parsing/building.
-- Login and checkpoint redirects report an expired session.
+- Login, signup, authwall, and checkpoint redirects report an expired session.
+- Logged-out controls on otherwise normal-looking URLs are also detected.
 - Shared navigation waits for the LinkedIn workspace and supports known layout
   fallbacks.
 - Empty result sets return empty locators without failing the entire run.
@@ -179,7 +182,9 @@ Implemented behavior:
 - Engagement growth compares a current snapshot with an eligible earlier
   baseline, not merely the immediately previous snapshot.
 - Default weights are reactions `1`, comments `3`, and reposts `5`.
-- Ranking uses weighted growth per elapsed hour.
+- Ranking now separates stabilized absolute Momentum from relative
+  Breakout. Both apply a six-hour rate floor and evidence-based confidence so
+  short observation intervals do not dominate the results.
 - Minimum observation window, minimum growth, maximum post age, and refresh
   limits are configurable through CLI flags.
 - Fingerprint-only posts can be observed again through discovery but cannot be
@@ -325,6 +330,8 @@ All positive numeric options are validated by the CLI.
 - `tests/test_source_attribution.py`: normalized source storage, deduplication,
   multi-source attribution, identity promotion, legacy compatibility.
 - `tests/test_tracking.py`: parsing, identity, metrics, candidates, growth.
+- `tests/test_auth.py` and `tests/test_session.py`: startup validation, logged-out
+  layouts, authentication URLs, and rate-limit detection.
 - `tests/test_diagnostics.py`: run lifecycle, aggregation, error bounds.
 - `tests/test_dashboard.py`: overview, trends, filters, details, run health.
 
@@ -347,19 +354,18 @@ All positive numeric options are validated by the CLI.
 8. **Operational compliance needs review.** Before production use, confirm the
    collection approach complies with LinkedIn terms, organizational policies,
    applicable privacy requirements, and rate limits.
-9. **Authentication detection is incomplete.** `/signup/cold-join` and some
-   logged-out public layouts are currently recorded as workspace failures, and
-   a run can continue through all refresh targets after authentication is lost.
-10. **The previous schedule was too aggressive.** One cycle could perform 100
-    refreshes plus hundreds of discovery interactions every three hours.
+9. **Safety controls still need live verification.** Startup session validation,
+   authentication/rate-limit fail-fast behavior, 15 refreshes, 5 candidates per
+   source, a 5-day tracking window, and a 12-hour schedule are implemented and
+   mocked but have not yet been exercised against the renewed session.
 
 ## Recommended next steps
 
 - [ ] Review the current dirty diff and create a coherent checkpoint commit.
-- [ ] Add authentication validation before collection and fail fast on login,
+- [x] Add authentication validation before collection and fail fast on login,
       signup, cold-join, checkpoint, or logged-out layouts.
-- [ ] Reduce refresh and per-source candidate limits, lengthen the schedule,
-      and add backoff after authentication or rate-limit warnings.
+- [x] Reduce refresh and per-source candidate limits, lengthen the schedule,
+      and stop immediately after authentication or HTTP 429 warnings.
 - [ ] Renew the LinkedIn session manually, then perform a small controlled smoke
       test for one source of each type.
 - [ ] Record observed LinkedIn layouts and fix selectors only where evidence
@@ -386,6 +392,30 @@ Do not mark something complete merely because code exists. Record whether it is
 unit-tested, integration-tested, and live-verified separately.
 
 ## Progress log
+
+### 2026-09-24 — Collection safety limits and fail-fast handling
+
+- Added startup validation for saved LinkedIn sessions and shared detection for
+  login, signup, authwall, checkpoint, and logged-out layouts.
+- Authentication challenges and HTTP 429 responses now stop refresh/discovery
+  immediately instead of failing every remaining target or source.
+- Reduced defaults to 15 refreshes, 5 candidates per source, and a 5-day
+  tracking window; changed the dormant LaunchAgent interval to 12 hours.
+- Ran the complete mocked suite (84 tests) without contacting LinkedIn or
+  restarting the scheduler. A fresh login and controlled live run remain next.
+
+### 2026-09-24 — Stabilized Momentum and Breakout ranking
+
+- Replaced hourly-rate ordering with separate absolute Momentum and relative
+  Breakout views while retaining the raw growth fields for compatibility.
+- Added a six-hour denominator floor and low/medium/high confidence based on
+  observation duration and snapshot depth.
+- Updated dashboard controls, table columns, terminal output, defaults, and
+  ranking documentation.
+- Ran the complete mocked suite (75 tests), compilation, diff checks, and a
+  read-only local Streamlit smoke test for both ranking views.
+- Ranking still needs calibration against future real observations; LinkedIn
+  collection and the scheduler remained stopped during this work.
 
 ### 2026-09-24 — Private dashboard deployment and post selection
 

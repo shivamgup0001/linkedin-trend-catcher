@@ -1,24 +1,15 @@
 """Shared navigation and candidate-loading behavior for discovery sources."""
 
-from urllib.parse import urlsplit
-
 from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+from collector.session import (
+    is_authentication_page,
+    require_authenticated_page,
+    require_safe_response,
+)
 
 
 WORKSPACE_SELECTOR = "main#workspace"
-
-
-def is_authentication_page(url):
-    parts = urlsplit(url)
-    if (parts.hostname or "").casefold() not in {"linkedin.com", "www.linkedin.com"}:
-        return False
-    path = parts.path.casefold()
-    return (
-        path == "/login"
-        or path.startswith("/login/")
-        or path == "/checkpoint"
-        or path.startswith("/checkpoint/")
-    )
 
 
 def navigate_to_source(
@@ -29,9 +20,9 @@ def navigate_to_source(
     fallback_workspace_selector=None,
 ):
     """Navigate once, detect authentication redirects, and await the workspace."""
-    page.goto(url, wait_until="domcontentloaded")
-    if is_authentication_page(page.url):
-        raise RuntimeError("LinkedIn session expired; log in again before collecting")
+    response = page.goto(url, wait_until="domcontentloaded")
+    require_safe_response(response)
+    require_authenticated_page(page)
 
     wait_options = {}
     if workspace_timeout_ms is not None:
@@ -39,8 +30,7 @@ def navigate_to_source(
     try:
         page.wait_for_selector(WORKSPACE_SELECTOR, **wait_options)
     except PlaywrightTimeoutError:
-        if is_authentication_page(page.url):
-            raise RuntimeError("LinkedIn session expired; log in again before collecting")
+        require_authenticated_page(page)
         if fallback_workspace_selector:
             try:
                 if page.locator(fallback_workspace_selector).count() > 0:

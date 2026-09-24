@@ -14,7 +14,7 @@
     <key>RunAtLoad</key>
     <true/>
     <key>StartInterval</key>
-    <integer>10800</integer>
+    <integer>43200</integer>
     <key>StandardOutPath</key>
     <string>/tmp/linkedin-trend-catcher.log</string>
     <key>StandardErrorPath</key>

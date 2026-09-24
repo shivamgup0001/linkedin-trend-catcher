@@ -9,6 +9,7 @@ from dashboard_data import (
     build_trend_rows,
     filter_trend_rows,
     latest_snapshot,
+    rank_trend_rows,
 )
 
 
@@ -101,7 +102,55 @@ class DashboardDataTests(unittest.TestCase):
         self.assertEqual(row["repost_growth"], 2)
         self.assertEqual(row["weighted_growth"], 29)
         self.assertEqual(row["score_per_hour"], 9.67)
+        self.assertEqual(row["momentum_score"], 2.42)
+        self.assertEqual(row["breakout_score"], 72.5)
+        self.assertEqual(row["confidence"], "low")
+        self.assertEqual(row["snapshot_count"], 3)
+        self.assertEqual(row["effective_hours"], 6)
         self.assertEqual(row["post_age_hours"], 4)
+
+    def test_short_windows_are_dampened_in_momentum_ranking(self):
+        short = {
+            "post_id": "short",
+            "momentum_score": 1.0,
+            "breakout_score": 20.0,
+            "weighted_growth": 12,
+            "score_per_hour": 12,
+        }
+        sustained = {
+            "post_id": "sustained",
+            "momentum_score": 3.0,
+            "breakout_score": 10.0,
+            "weighted_growth": 48,
+            "score_per_hour": 4,
+        }
+
+        ranked = rank_trend_rows([short, sustained], "momentum")
+
+        self.assertEqual([row["post_id"] for row in ranked], ["sustained", "short"])
+
+    def test_breakout_ranking_is_independent_from_momentum(self):
+        established = {
+            "post_id": "established", "momentum_score": 8,
+            "breakout_score": 12, "weighted_growth": 80,
+        }
+        emerging = {
+            "post_id": "emerging", "momentum_score": 4,
+            "breakout_score": 60, "weighted_growth": 40,
+        }
+
+        self.assertEqual(
+            rank_trend_rows([established, emerging], "momentum")[0]["post_id"],
+            "established",
+        )
+        self.assertEqual(
+            rank_trend_rows([established, emerging], "breakout")[0]["post_id"],
+            "emerging",
+        )
+
+    def test_unknown_ranking_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, "Unsupported trend ranking"):
+            rank_trend_rows([], "viral")
 
     def test_filtering_combines_all_dashboard_filters(self):
         matching = {

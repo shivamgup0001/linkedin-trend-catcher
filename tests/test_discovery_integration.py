@@ -9,7 +9,8 @@ from dashboard_data import (
     filter_trend_rows,
     normalized_discovery_sources,
 )
-from main import discover_posts, parse_args
+from main import discover_posts, parse_args, refresh_posts
+from collector.session import LinkedInAuthenticationError
 from collector.source_adapter import build_source_adapters
 from models.collection_run import CollectionRunDiagnostics
 from models.post import Post
@@ -59,6 +60,9 @@ class FakePage:
     def close(self):
         self.closed = True
 
+    def wait_for_timeout(self, milliseconds):
+        pass
+
 
 class FakeContext:
     def __init__(self):
@@ -103,6 +107,15 @@ class FakeDB:
     def save_observation(self, post, observed_at, source):
         self.observations.append((post, observed_at, source))
         return True
+
+    def refresh_targets(self, max_track_days, refresh_limit):
+        return [
+            {"post_id": "one", "post_url": "https://www.linkedin.com/posts/one/"},
+            {"post_id": "two", "post_url": "https://www.linkedin.com/posts/two/"},
+        ]
+
+    def save_refresh_failure(self, *args):
+        raise AssertionError("Authentication failure must not be stored as a post failure")
 
 
 def source(source_type, value):
@@ -244,6 +257,55 @@ class DiscoveryIntegrationTests(unittest.TestCase):
         self.assertLessEqual(len(error["message"]), 300)
         self.assertTrue(all(page.closed for page in context.pages))
 
+    def test_authentication_failure_stops_discovery_before_later_sources(self):
+        failed = source(DiscoverySourceType.KEYWORD, "SaaS")
+        later = source(DiscoverySourceType.HASHTAG, "saas")
+        later_adapter = FakeAdapter()
+        context = FakeContext()
+        diagnostics = self.diagnostics()
+
+        with self.assertRaises(LinkedInAuthenticationError):
+            discover_posts(
+                context,
+                FakeDB(),
+                FakeParser(),
+                self.observed_at,
+                diagnostics,
+                sources=[failed, later],
+                adapters={
+                    failed.source_type: FakeAdapter(
+                        error=LinkedInAuthenticationError("session expired")
+                    ),
+                    later.source_type: later_adapter,
+                },
+            )
+
+        self.assertEqual(len(context.pages), 1)
+        self.assertEqual(later_adapter.calls, [])
+        self.assertEqual(diagnostics.source_diagnostics[0].status, "failed")
+        self.assertEqual(
+            diagnostics.source_diagnostics[0].errors[0]["stage"],
+            "authentication",
+        )
+
+    def test_authentication_failure_stops_refresh_after_first_target(self):
+        diagnostics = CollectionRunDiagnostics.start("refresh", self.observed_at)
+
+        with patch(
+            "main.LinkedInTracker.refresh",
+            side_effect=LinkedInAuthenticationError("session expired"),
+        ) as refresh:
+            with self.assertRaises(LinkedInAuthenticationError):
+                refresh_posts(
+                    FakeContext(), FakeDB(), FakeParser(), self.observed_at,
+                    max_track_days=5, refresh_limit=15, diagnostics=diagnostics,
+                )
+
+        self.assertEqual(refresh.call_count, 1)
+        self.assertEqual(diagnostics.refresh.attempts, 1)
+        self.assertEqual(diagnostics.refresh.failures, 0)
+        self.assertEqual(diagnostics.errors[0]["stage"], "authentication")
+
     def test_dashboard_supports_new_multi_source_and_legacy_posts(self):
         new_post = {
             "keyword": "SaaS",
@@ -315,6 +377,14 @@ class DiscoveryIntegrationTests(unittest.TestCase):
         with patch("sys.argv", ["main.py", "--max-candidates-per-source", "0"]):
             with self.assertRaises(SystemExit):
                 parse_args()
+
+    def test_cli_defaults_use_conservative_collection_limits(self):
+        with patch("sys.argv", ["main.py"]):
+            args = parse_args()
+
+        self.assertEqual(args.refresh_limit, 15)
+        self.assertEqual(args.max_candidates_per_source, 5)
+        self.assertEqual(args.max_post_age_days, 5)
 
 
 if __name__ == "__main__":

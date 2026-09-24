@@ -2,7 +2,7 @@
 
 import streamlit as st
 
-from analytics.growth import ENGAGEMENT_WEIGHTS
+from analytics.growth import ENGAGEMENT_WEIGHTS, MIN_RATE_WINDOW_HOURS
 from dashboard_data import (
     DashboardConfigurationError,
     DashboardDataAccess,
@@ -13,6 +13,7 @@ from dashboard_data import (
     build_trend_rows,
     filter_trend_rows,
     normalized_discovery_sources,
+    rank_trend_rows,
 )
 from config.config_loader import DiscoveryConfigError, load_discovery_sources
 
@@ -102,6 +103,16 @@ with trending_tab:
         f"{ENGAGEMENT_WEIGHTS['likes']}, comments × {ENGAGEMENT_WEIGHTS['comments']}, "
         f"reposts × {ENGAGEMENT_WEIGHTS['reposts']}."
     )
+    ranking = st.radio(
+        "Ranking",
+        ["Momentum", "Breakout"],
+        horizontal=True,
+        help=(
+            "Momentum favors strong absolute growth. Breakout favors growth that is "
+            "large relative to the post's earlier engagement. Both scores dampen short "
+            "observation windows and low-confidence histories."
+        ),
+    ).lower()
 
     authors = sorted({post.get("author") or "Unknown" for post in posts})
     keywords = sorted({post.get("keyword") or "Unknown" for post in posts})
@@ -132,7 +143,10 @@ with trending_tab:
         "Maximum post age (days)", min_value=1, value=7, step=1
     )
     observation_window = thresholds[2].number_input(
-        "Minimum observation window (hours)", min_value=0.25, value=1.0, step=0.25
+        "Minimum observation window (hours)",
+        min_value=1.0,
+        value=float(MIN_RATE_WINDOW_HOURS),
+        step=1.0,
     )
 
     trend_rows = build_trend_rows(posts, snapshots, observation_window)
@@ -146,6 +160,7 @@ with trending_tab:
         min_growth=min_growth,
         max_post_age_days=max_age_days,
     )
+    trend_rows = rank_trend_rows(trend_rows, ranking)
 
     if not trend_rows:
         st.info("No posts match these filters and observation requirements.")
@@ -161,7 +176,10 @@ with trending_tab:
             "Comment growth": metric_value(row["comment_growth"]),
             "Repost growth": metric_value(row["repost_growth"]),
             "Weighted growth": row["weighted_growth"],
-            "Score/hour": row["score_per_hour"],
+            "Momentum": row["momentum_score"],
+            "Breakout (%/6h)": row["breakout_score"],
+            "Confidence": row["confidence"],
+            "Snapshots": row["snapshot_count"],
             "Window (hours)": row["observation_hours"],
             "Last observation": row["last_observation"],
             "Refresh status": row["refresh_status"],

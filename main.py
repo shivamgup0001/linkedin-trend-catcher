@@ -4,10 +4,12 @@ from datetime import datetime, timezone
 
 from playwright.sync_api import sync_playwright
 
+from analytics.growth import MIN_RATE_WINDOW_HOURS
 from analytics.trend_analyzer import TrendAnalyzer
 from collector.auth import LinkedInAuth
 from collector.collector import LinkedInCollector
 from collector.parser import LinkedInParser
+from collector.session import LinkedInSafetyStop
 from collector.source_adapter import build_source_adapters
 from collector.tracker import LinkedInTracker
 from config.config_loader import load_discovery_sources
@@ -78,7 +80,7 @@ def discover_posts(
     parser,
     observed_at,
     diagnostics,
-    max_candidates_per_source=30,
+    max_candidates_per_source=5,
     sources=None,
     adapters=None,
 ):
@@ -142,6 +144,8 @@ def discover_posts(
                         diagnostics,
                         source_diagnostics,
                     )
+                except LinkedInSafetyStop:
+                    raise
                 except Exception as error:
                     _record_skip(
                         diagnostics, source_diagnostics, "parse_error"
@@ -157,6 +161,10 @@ def discover_posts(
                 finally:
                     if (index + 1) % 10 == 0 or index + 1 == process_count:
                         print(f"Processed {index + 1}/{process_count} candidates")
+        except LinkedInSafetyStop as error:
+            source_failed = True
+            diagnostics.add_source_error(source_diagnostics, "authentication", error)
+            raise
         except Exception as error:
             source_failed = True
             diagnostics.add_source_error(
@@ -232,6 +240,9 @@ def refresh_posts(
                     )
                     refreshed += 1
                     diagnostics.refresh.successes += 1
+            except LinkedInSafetyStop as error:
+                diagnostics.add_error("authentication", error)
+                raise
             except Exception as error:
                 failed += 1
                 diagnostics.refresh.record_failure("exception")
@@ -259,12 +270,13 @@ def print_trends(db, observed_at, args):
         print("No posts met the trend thresholds in this cycle")
         return
 
-    print("\nTrending by weighted engagement gained per hour")
+    print("\nTrending by stabilized engagement momentum")
     for index, post in enumerate(ranked, 1):
         changes = post["changes"]
         print(
             f"{index}. {post['author'] or 'Unknown'} "
-            f"({post['keyword']}) | {post['score_per_hour']}/hour "
+            f"({post['keyword']}) | momentum {post['momentum_score']} "
+            f"({post['confidence']} confidence) "
             f"({post['weighted_growth']} weighted points over {post['hours']} hours) | "
             f"+{changes['likes'] or 0} reactions, "
             f"+{changes['comments'] or 0} comments, "
@@ -296,7 +308,7 @@ def collect_once(db, args):
                         observed_at,
                         diagnostics,
                         max_candidates_per_source=getattr(
-                            args, "max_candidates_per_source", 30
+                            args, "max_candidates_per_source", 5
                         ),
                     )
             finally:
@@ -318,14 +330,16 @@ def parse_args():
     cli.add_argument("--mode", choices=("all", "discover", "refresh"), default="all")
     cli.add_argument("--interval-hours", type=float, help="Repeat in this process; external scheduling is recommended")
     cli.add_argument("--headless", action="store_true", help="Run without a visible browser after initial login")
-    cli.add_argument("--max-post-age-days", type=int, default=7)
-    cli.add_argument("--min-window-hours", type=float, default=1)
+    cli.add_argument("--max-post-age-days", type=int, default=5)
+    cli.add_argument(
+        "--min-window-hours", type=float, default=MIN_RATE_WINDOW_HOURS
+    )
     cli.add_argument("--min-growth", type=int, default=3, help="Minimum weighted engagement gained")
-    cli.add_argument("--refresh-limit", type=int, default=100)
+    cli.add_argument("--refresh-limit", type=int, default=15)
     cli.add_argument(
         "--max-candidates-per-source",
         type=int,
-        default=30,
+        default=5,
         help="Maximum candidates processed for each discovery source",
     )
     args = cli.parse_args()

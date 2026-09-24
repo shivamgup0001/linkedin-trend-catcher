@@ -1,7 +1,7 @@
 from collections import Counter
 from datetime import timedelta
 import re
-from analytics.growth import growth_between
+from analytics.growth import growth_between, trend_scores
 
 
 AGE_IN_HOURS = {"s": 1 / 3600, "m": 1 / 60, "h": 1, "d": 24, "w": 168, "mo": 720, "y": 8760}
@@ -33,6 +33,7 @@ class TrendAnalyzer:
                 continue
             if self._post_age_hours(post, observed_at) > max_post_age_days * 24:
                 continue
+            snapshot_count = len(list(self.snapshots.find({"post_id": current["post_id"]})))
             ranked.append({
                 "post_id": current["post_id"],
                 "author": post.get("author"),
@@ -41,9 +42,10 @@ class TrendAnalyzer:
                 "text": post.get("text"),
                 "posted_at": post.get("posted_at"),
                 **growth,
+                **trend_scores(growth, snapshot_count),
             })
         ranked.sort(key=lambda item: (
-            -item["score_per_hour"],
+            -item["momentum_score"],
             -item["weighted_growth"],
             str(item["post_id"]),
         ))

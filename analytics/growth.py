@@ -4,6 +4,9 @@ ENGAGEMENT_WEIGHTS = {
     "reposts": 5,
 }
 
+MIN_RATE_WINDOW_HOURS = 6
+MIN_BREAKOUT_BASELINE = 20
+
 
 def growth_between(previous, current):
     hours = (current["observed_at"] - previous["observed_at"]).total_seconds() / 3600
@@ -33,4 +36,40 @@ def growth_between(previous, current):
         "score_components": score_components,
         "weighted_growth": score,
         "score_per_hour": round(score / hours, 2),
+    }
+
+
+def trend_scores(growth, snapshot_count):
+    """Return stable absolute and relative growth scores with evidence metadata."""
+    hours = growth["hours"]
+    effective_hours = max(hours, MIN_RATE_WINDOW_HOURS)
+
+    if snapshot_count >= 4 and hours >= 24:
+        confidence, confidence_factor = "high", 1.0
+    elif snapshot_count >= 3 and hours >= MIN_RATE_WINDOW_HOURS:
+        confidence, confidence_factor = "medium", 0.75
+    else:
+        confidence, confidence_factor = "low", 0.5
+
+    weighted_baseline = sum(
+        (growth["previous_metrics"].get(name) or 0) * weight
+        for name, weight in ENGAGEMENT_WEIGHTS.items()
+    )
+    stabilized_growth = growth["weighted_growth"] / effective_hours
+    six_hour_growth = stabilized_growth * MIN_RATE_WINDOW_HOURS
+
+    return {
+        "momentum_score": round(stabilized_growth * confidence_factor, 2),
+        "breakout_score": round(
+            six_hour_growth
+            / max(weighted_baseline, MIN_BREAKOUT_BASELINE)
+            * 100
+            * confidence_factor,
+            2,
+        ),
+        "confidence": confidence,
+        "confidence_factor": confidence_factor,
+        "snapshot_count": snapshot_count,
+        "effective_hours": round(effective_hours, 2),
+        "weighted_baseline": weighted_baseline,
     }

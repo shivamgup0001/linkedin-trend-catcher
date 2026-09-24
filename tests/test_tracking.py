@@ -114,6 +114,8 @@ class TrackingTests(unittest.TestCase):
         self.assertEqual(ranked[0]["previous_observed_at"], start)
         self.assertEqual(ranked[0]["weighted_growth"], 20)
         self.assertEqual(ranked[0]["score_per_hour"], 10)
+        self.assertEqual(ranked[0]["momentum_score"], 1.67)
+        self.assertEqual(ranked[0]["confidence"], "low")
 
     def test_engagement_reports_use_latest_snapshots(self):
         start = datetime(2026, 1, 1, tzinfo=timezone.utc)

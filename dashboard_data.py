@@ -8,7 +8,7 @@ import re
 from dotenv import load_dotenv
 from pymongo import MongoClient
 
-from analytics.growth import growth_between
+from analytics.growth import growth_between, trend_scores
 
 
 NOT_ATTEMPTED = "not attempted"
@@ -175,6 +175,11 @@ def build_trend_rows(posts, snapshots, min_window_hours=1):
         if growth is None:
             continue
 
+        valid_snapshot_count = sum(
+            _as_utc(item.get("observed_at")) is not None for item in history
+        )
+        scores = trend_scores(growth, valid_snapshot_count)
+
         changes = growth["changes"]
         metrics = growth["current_metrics"]
         attributed_sources = normalized_discovery_sources(post)
@@ -191,6 +196,7 @@ def build_trend_rows(posts, snapshots, min_window_hours=1):
             "repost_growth": changes.get("reposts"),
             "weighted_growth": growth["weighted_growth"],
             "score_per_hour": growth["score_per_hour"],
+            **scores,
             "observation_hours": growth["hours"],
             "last_observation": growth["current_observed_at"],
             "baseline_observation": growth["previous_observed_at"],
@@ -205,10 +211,22 @@ def build_trend_rows(posts, snapshots, min_window_hours=1):
             }),
         })
 
-    rows.sort(key=lambda item: (
-        -item["score_per_hour"], -item["weighted_growth"], str(item["post_id"])
+    return rank_trend_rows(rows, "momentum")
+
+
+def rank_trend_rows(rows, ranking="momentum"):
+    """Sort trend rows using one of the dashboard's supported ranking views."""
+    score_field = {
+        "momentum": "momentum_score",
+        "breakout": "breakout_score",
+    }.get(ranking)
+    if score_field is None:
+        raise ValueError(f"Unsupported trend ranking: {ranking}")
+    return sorted(rows, key=lambda item: (
+        -(item.get(score_field) or 0),
+        -(item.get("weighted_growth") or 0),
+        str(item.get("post_id")),
     ))
-    return rows
 
 
 def filter_trend_rows(
